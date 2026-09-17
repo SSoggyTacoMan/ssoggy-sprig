@@ -51,4 +51,7 @@ Todo:
 - [ ] fix formattng of dashes and + that look like _
 - [ ] update splash screen with the new games
 
-Please let me know if anything else you want me to add or fix, using Github issues, or contact me directly on Hackclub Slack or Discord.
+Please let me know if anything else you want me to add or fix (or if there is anything wrong), using Github issues, or contact me directly on Hackclub Slack or Discord. (@SSoggyTacoMan)
+
+### License
+MIT License ig
