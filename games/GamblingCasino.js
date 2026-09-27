@@ -2259,9 +2259,14 @@ function drawTitle() {
 function drawLobby() {
   prepScreen(true);
   
-  txt("S SHOP", 0, 0, color`6`);
-  if (ShopState.upgrades.hyperDrive) txt("W HYPER", 1, 0, hyperMode ? color`5` : color`4`);
-  if (PlayerState.vipTier > 0 && PlayerState.debt === 0) txtR("H VIP " + PlayerState.vipTier, 0, PlayerState.vipMode ? color`6` : color`4`);
+  if (PlayerState.debt > 0) {
+    txt("S SHOP", 1, 2, color`6`);
+    if (ShopState.upgrades.hyperDrive) txt("W HYPER", 9, 2, hyperMode ? color`5` : color`4`);
+  } else {
+    txt("S SHOP", 0, 0, color`6`);
+    if (ShopState.upgrades.hyperDrive) txt("W HYPER", 7, 0, hyperMode ? color`5` : color`4`);
+    if (PlayerState.vipTier > 0) txtR("H VIP " + PlayerState.vipTier, 0, PlayerState.vipMode ? color`6` : color`4`);
+  }
   
   if (UIState.menuPage === 0) {
     txtC(PlayerState.vipMode ? "VIP CASINO 1/3" : "CASINO 1/3", 3, color`6`);
@@ -2370,11 +2375,12 @@ function drawRrAnim() {
 }
 function drawWinCredits() {
   prepScreen(false);
-  txtC("YOU BOUGHT", 3, color`6`);
-  txtC("THE CASINO!", 5, color`6`);
-  txtC("YOU ARE RICH", 7, color`3`);
-  txtC("YOU WIN", 9, color`4`);
-  txtC("THANKS FOR PLAYING", 12, color`7`);
+  txtC("YOU BOUGHT", 2, color`6`);
+  txtC("THE CASINO!", 4, color`6`);
+  txtC("YOU ARE RICH", 6, color`3`);
+  txtC("YOU WIN", 8, color`4`);
+  txtC("THANKS FOR PLAYING", 11, color`7`);
+  txtC("PRESS ANY KEY", 14, color`7`);
 }
 function drawSlot() {
   prepScreen(true);
@@ -2534,12 +2540,16 @@ function bjTotal(hand) {
 }
 function bjShownDealer() { return bjDealerHidden && bjDealer.length > 1 ? [bjDealer[0]] : bjDealer;
 }
-function drawBjCard(card, x, y, hidden) {
-  sprs([[x, y, bjTL], [x + 1, y, bjTR], [x, y + 1, bjL], [x + 1, y + 1, hidden ? bjR : bjSuit(card)], [x, y + 2, bjBL], [x + 1, y + 2, bjBR]]);
+function drawBjCard(card, x, y, hidden, compact = false) {
+  if (compact) {
+    sprs([[x, y, bjTL], [x + 1, y, bjTR], [x, y + 1, bjBL], [x + 1, y + 1, hidden ? bjBR : bjSuit(card)]]);
+  } else {
+    sprs([[x, y, bjTL], [x + 1, y, bjTR], [x, y + 1, bjL], [x + 1, y + 1, hidden ? bjR : bjSuit(card)], [x, y + 2, bjBL], [x + 1, y + 2, bjBR]]);
+  }
   if (!hidden) txt(bjLabel(card), x * 2 + 1, y * 2 + 1, color`0`);
 }
-function drawBjCards(hand, x, y, hiddenSecond) {
-  for (let i = 0; i < hand.length && i < 5; i++) drawBjCard(hand[i], x + i * 2, y, hiddenSecond && i > 0);
+function drawBjCards(hand, x, y, hiddenSecond, compact = false) {
+  for (let i = 0; i < hand.length && i < 5; i++) drawBjCard(hand[i], x + i * 2, y, hiddenSecond && i > 0, compact);
 }
 function drawBlackjackEmpty() {
   txt("BANK " + fmt(PlayerState.bank), 1, 0, color`4`); txtR("BET " + stakeLabel(), 0, color`3`);
@@ -2554,8 +2564,8 @@ function drawBlackjackHands() {
   drawBjCards(bjDealer, 0, 0, bjDealerHidden);
   const shown = bjShownDealer();
   if (bjActive2) {
-    drawBjCards(bjPlayer, 0, 3, false);
-    drawBjCards(bjPlayer2, 0, 5, false);
+    drawBjCards(bjPlayer, 0, 3, false, true);
+    drawBjCards(bjPlayer2, 0, 5, false, true);
     txt("DLR " + bjTotal(shown) + (bjDealerHidden ? "+?" : ""), 0, 6, color`3`);
     txt((bjCurrentHand === 1 && bjActive ? ">" : "") + "H1 " + bjTotal(bjPlayer), 0, 13, color`9`);
     txt((bjCurrentHand === 2 && bjActive ? ">" : "") + "H2 " + bjTotal(bjPlayer2), 8, 13, color`9`);
@@ -2638,11 +2648,9 @@ function drawRoulette() {
   txt("L ADD", 0, 14, color`6`);
   txt("I SEL", 6, 14, color`H`);
   if (ShopState.upgrades?.autoRoul) {
-    txt(ShopState.upgrades.autoRoulOn ? "W AUTO ON " : "W AUTO OFF", 0, 15, ShopState.upgrades.autoRoulOn ? color`F` : color`9`);
-    txtC("J SPIN", 15, color`7`);
-  } else {
-    txt("J SPIN", 0, 15, color`7`);
+    txtR(ShopState.upgrades.autoRoulOn ? "W AUTO:ON" : "W AUTO:OFF", 14, ShopState.upgrades.autoRoulOn ? color`F` : color`9`);
   }
+  txt("J SPIN", 0, 15, color`7`);
   txtR("K BACK", 15, color`9`);
 }
 function drawRouletteSpin() {
@@ -2710,8 +2718,12 @@ function drawBingoMenu() {
     txtR("K BACK", 3, color`9`);
   } else if (BingoState.balls.length >= 40) {
     const cost = Math.max(3, Math.floor(PlayerState.lastStake * 0.2));
-    txtR("L EXTRA " + cost, 1, color`7`);
-    txtR("J GIVE UP", 2, color`7`);
+    if (bingoNearMiss() && BingoState.balls.length < 45 && PlayerState.bank >= cost) {
+      txtR("L EXTRA " + cost, 1, color`7`);
+    } else {
+      txtR("L END", 1, color`7`);
+    }
+    txtR("J MARK", 2, color`6`);
     txtR("K BACK", 3, color`9`);
   } else {
     txtR("L BALL", 1, color`7`);
@@ -2727,8 +2739,8 @@ function drawBingoMenu() {
       txt(l + " " + BingoState.last, 6, 3, bingoLetterColor(l));
     }
   }
-  if (BingoState.msg && BingoState.msg !== "NOT CALLED") {
-    txtC(BingoState.msg, 4, color`6`);
+  if (BingoState.msg) {
+    txtC(BingoState.msg, 4, BingoState.msg === "NOT CALLED" ? color`3` : color`6`);
   }
 }
 
@@ -2977,12 +2989,7 @@ function drawStartCard() {
   return n;
 }
 function drawFinalNextCard() {
-  let n = randInt(1, 9);
-  let tries = 0;
-  while (n === CardState.lastNext && tries < 6) {
-    n = randInt(1, 9);
-    tries++;
-  }
+  const n = randInt(1, 9);
   CardState.lastNext = n;
   return n;
 }
@@ -3008,6 +3015,7 @@ function spendStake(decreaseDeadline = true, isNewHand = true) { // NOSONAR
       PlayerState.bank -= PlayerState.debt;
       PlayerState.debt = 0;
       PlayerState.sharkDeadline = 0;
+      invalidateShopCache();
       playSound(bigWinSfx);
     } else if (PlayerState.sharkDeadline < 0) {
       goBust(true);
@@ -3685,11 +3693,11 @@ function bjResolveHand(hand, stake) {
   const p = bjTotal(hand), d = bjTotal(bjDealer);
   if (p > 21) return { res: "BUST", won: -stake };
   if (d > 21 || p > d) return { res: "WIN", won: stake, payout: (stake * 2) * sharkMult() };
-  if (p === d) return { res: "PUSH", won: 0, payout: stake * sharkMult() };
+  if (p === d) return { res: "PUSH", won: 0, payout: stake };
   return { res: "LOST", won: -stake };
 }
 function bjResolve() { // NOSONAR
-  bjActive = false; bjDone = true; bjDealerHidden = false;
+  bjActive = false; bjDone = true; bjDealerHidden = false; bjDealing = false;
   let totalWon = 0;
   let totalPayout = 0;
   
@@ -3779,8 +3787,6 @@ function bjStartDeal(stake) {
         const payout = Math.floor(stake * 2.5) * sharkMult();
         recordPayout(payout, stake);
         PlayerState.bank += payout;
-        CareerStats.handsWon++;
-        if (payout > SessionStats.biggestPayout) SessionStats.biggestPayout = payout;
         PlayerState.jackpot += Math.max(1, Math.floor((payout - stake) * 0.05));
         PlayerState.heat += 2; clampHeat();
         bjDone = true; bjMsg = moneyText("BLACKJACK", payout);
@@ -3857,6 +3863,7 @@ function bjStand() {
     return;
   }
   bjActive = false;
+  bjDealing = true;
   bjDealerHidden = false;
   playTune(tickSfx);
   render();
@@ -3936,6 +3943,7 @@ function spinRoulette() {
         PlayerState.bank -= PlayerState.debt;
         PlayerState.debt = 0;
         PlayerState.sharkDeadline = 0;
+        invalidateShopCache();
         playSound(bigWinSfx);
       } else if (PlayerState.sharkDeadline < 0) {
         goBust(true);
@@ -3993,27 +4001,31 @@ function finishRoulette() { // NOSONAR
     }
   }
   PlayerState.lastStake = totalBet;
+  const net = totalWin - totalBet;
   if (totalWin > totalBet) CareerStats.handsWon++;
   else CareerStats.handsLost++;
   if (totalWin > 0) {
     recordPayout(totalWin, totalBet);
     PlayerState.bank += totalWin;
     feedJackpotByWin(totalWin, maxMult >= 36);
+  }
+  if (net > 0) {
+    CareerStats.handsWon++;
     PlayerState.heat += maxMult >= 36 ? 2 : 1; clampHeat();
-    rouMsg = "WIN " + fmt(totalWin - totalBet);
+    rouMsg = "WIN " + fmt(net);
     playSound(maxMult >= 36 ? bigWinSfx : winSfx, maxMult >= 36 ? 1200 : 900);
-    UIState.state = "rouletteResult";
-    updateStakes();
-    render();
+  } else if (net === 0 && totalBet > 0) {
+    rouMsg = "PUSH 0";
+    playSound(tickSfx);
   } else {
     PlayerState.heat -= 1; clampHeat();
-    rouMsg = "LOST " + fmt(totalBet);
-    if (PlayerState.bank <= 0) { goBust(); return; }
+    rouMsg = "LOST " + fmt(Math.abs(net));
     playSound(loseSfx, 1200);
-    UIState.state = "rouletteResult";
-    updateStakes();
-    render();
   }
+  if (PlayerState.bank <= 0) { goBust(); return; }
+  UIState.state = "rouletteResult";
+  updateStakes();
+  render();
   rouBets = [];
   rouletteAutoSpinCheck();
 }
@@ -4030,6 +4042,7 @@ function rouletteAutoSpinCheck() {
              PlayerState.bank -= PlayerState.debt;
              PlayerState.debt = 0;
              PlayerState.sharkDeadline = 0;
+             invalidateShopCache();
              playSound(bigWinSfx);
            } else if (PlayerState.sharkDeadline < 0) {
              goBust(true);
@@ -4344,6 +4357,10 @@ function titleOrBust() {
     newGame();
     return true;
   }
+  if (UIState.state === "win_credits") {
+    newGame();
+    return true;
+  }
   return false;
 }
 const InputStateHandlers = {
@@ -4469,6 +4486,10 @@ const InputStateHandlers = {
     },
     k: () => {
       PlayerState.bank += RRState.winnings;
+      if (PlayerState.bank <= 0) {
+        goBust(true);
+        return;
+      }
       UIState.state = "lobby";
       updateStakes();
       playSound(bigWinSfx);
@@ -4496,7 +4517,10 @@ const InputStateHandlers = {
     j: () => { UIState.state = "lobby"; updateStakes(); playSound(tickSfx); render(); startBgm(); }
   },
   rr_animating: {},
-  win_credits: {},
+  win_credits: {
+    j: () => newGame(),
+    k: () => newGame(),
+  },
   slotChoice: {
     j: () => riskSlotWin(),
     l: () => takeSlotWin(),
@@ -4610,7 +4634,15 @@ const InputStateHandlers = {
       if (BingoState.balls.length >= 40 && !BingoState.done) {
         const cost = Math.max(3, Math.floor(PlayerState.lastStake * 0.2));
         if (bingoNearMiss() && BingoState.balls.length < 45 && PlayerState.bank >= cost) {
+        if (bingoNearMiss() && BingoState.balls.length < 45 && PlayerState.bank >= cost) {
           PlayerState.bank -= cost; SessionStats.totalWagered += cost; PlayerState.jackpot += Math.floor(cost * 0.5); updateStakes(); bingoDrawBall(true);
+        } else {
+          CareerStats.handsLost++;
+          BingoState.done = true;
+          BingoState.msg = "GAME OVER";
+          playTune(loseSfx);
+          render();
+        }
         }
       } else {
         bingoDrawBall();
