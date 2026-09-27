@@ -2278,9 +2278,9 @@ function drawLobby() {
   } else {
     txtC(PlayerState.vipMode ? "VIP CASINO 3/3" : "CASINO 3/3", 3, color`6`);
     txtC("RANK: " + getRank(CareerStats.peakCash), 5, color`6`);
-    txtC("SESS PEAK: " + fmt(SessionStats.peakBalance), 6, color`7`);
-    txtC("SESS BET: " + fmt(SessionStats.totalWagered), 7, color`7`);
-    txtC("SESS HANDS: " + SessionStats.handsPlayed, 8, color`7`);
+    txtC("PEAK: " + fmt(SessionStats.peakBalance), 6, color`7`);
+    txtC("WAGERED: " + fmt(SessionStats.totalWagered), 7, color`7`);
+    txtC("HANDS: " + SessionStats.handsPlayed, 8, color`7`);
     txtC("MAX PAY: " + fmt(SessionStats.biggestPayout), 9, color`7`);
     const totalHands = CareerStats.handsWon + CareerStats.handsLost;
     const wlRatio = totalHands > 0 ? Math.floor((CareerStats.handsWon / totalHands) * 100) : 0;
@@ -2753,9 +2753,9 @@ function drawBust() {
   prepScreen(false);
   txtC("-- BUST RECAP --", 1, color`3`);
   txtC("RANK: " + getRank(CareerStats.peakCash), 3, color`6`);
-  txtC("SESS PEAK: " + fmt(SessionStats.peakBalance), 4, color`7`);
-  txtC("SESS BET: " + fmt(SessionStats.totalWagered), 5, color`7`);
-  txtC("SESS HANDS: " + SessionStats.handsPlayed, 6, color`7`);
+  txtC("PEAK: " + fmt(SessionStats.peakBalance), 4, color`7`);
+  txtC("WAGERED: " + fmt(SessionStats.totalWagered), 5, color`7`);
+  txtC("HANDS: " + SessionStats.handsPlayed, 6, color`7`);
   txtC("MAX PAY: " + fmt(SessionStats.biggestPayout), 7, color`7`);
   const totalHands = CareerStats.handsWon + CareerStats.handsLost;
   const wlRatio = totalHands > 0 ? Math.floor((CareerStats.handsWon / totalHands) * 100) : 0;
