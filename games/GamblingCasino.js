@@ -21,7 +21,7 @@ const CareerStats = {
 
 const UIState = {
   state: "title", tick: 0, fx: 0, resultText: "", resultGood: false, lastGame: "none",
-  pendingWin: 0, pendingText: "", pendingBig: false, justRisked: false, introFx: 0, moreMenu: false,
+  pendingWin: 0, pendingText: "", pendingBig: false, justRisked: false, introFx: 0, menuPage: 0,
   sawCasinoNotif: false
 };
 
@@ -2259,22 +2259,34 @@ function drawLobby() {
   if (ShopState.upgrades.hyperDrive) txt("W HYPER", 1, 0, hyperMode ? color`5` : color`4`);
   if (PlayerState.vipTier > 0 && PlayerState.debt === 0) txtR("H VIP " + PlayerState.vipTier, 0, PlayerState.vipMode ? color`6` : color`4`);
   
-  if (!UIState.moreMenu) {
-    txtC(PlayerState.vipMode ? "VIP CASINO 1/2" : "CASINO 1/2", 3, color`6`);
+  if (UIState.menuPage === 0) {
+    txtC(PlayerState.vipMode ? "VIP CASINO 1/3" : "CASINO 1/3", 3, color`6`);
     sprs([[1, 4, cherry], [2, 4, lemon], [3, 4, seven], [5, 4, cardSprite(5)], [8, 4, wheelIcon]]);
     txt("J", 2, 7, color`2`); txt("I", 11, 7, color`2`); txt("L", 17, 7, color`2`);
     txt("SLOT", 1, 10, color`D`); txt("CARD", 9, 10, color`8`);
     txt("WHEEL", 14, 10, color`6`);
     txtC("JACKPOT " + fmt(PlayerState.jackpot), 12, color`6`);
     txt("K PAGE 2", 1, 14, color`H`); txtR("A/D BET", 14, color`7`);
-  } else {
-    txtC(PlayerState.vipMode ? "VIP CASINO 2/2" : "CASINO 2/2", 3, color`6`);
+  } else if (UIState.menuPage === 1) {
+    txtC(PlayerState.vipMode ? "VIP CASINO 2/3" : "CASINO 2/3", 3, color`6`);
     sprs([[1, 4, bjIcon], [4, 4, rouletteIcon], [7, 4, bingoIcon]]);
     txt("J", 2, 7, color`2`); txt("I", 8, 7, color`2`); txt("L", 14, 7, color`2`);
     txt("BJ", 2, 10, color`8`); txt("ROU", 7, 10, color`3`);
     txt("BINGO", 13, 10, color`6`);
     txtC("JACKPOT " + fmt(PlayerState.jackpot), 12, color`6`);
-    txt("K PAGE 1", 1, 14, color`H`); txtR("A/D BET", 14, color`7`);
+    txt("K PAGE 3", 1, 14, color`H`); txtR("A/D BET", 14, color`7`);
+  } else {
+    txtC(PlayerState.vipMode ? "VIP CASINO 3/3" : "CASINO 3/3", 3, color`6`);
+    txtC("RANK: " + getRank(CareerStats.peakCash), 5, color`6`);
+    txtC("SESS PEAK: " + fmt(SessionStats.peakBalance), 6, color`7`);
+    txtC("SESS BET: " + fmt(SessionStats.totalWagered), 7, color`7`);
+    txtC("SESS HANDS: " + SessionStats.handsPlayed, 8, color`7`);
+    txtC("MAX PAY: " + fmt(SessionStats.biggestPayout), 9, color`7`);
+    const totalHands = CareerStats.handsWon + CareerStats.handsLost;
+    const wlRatio = totalHands > 0 ? Math.floor((CareerStats.handsWon / totalHands) * 100) : 0;
+    txtC("W/L RATIO: " + wlRatio + "%", 10, color`7`);
+    txtC("CAREER BUSTS: " + CareerStats.busts, 11, color`7`);
+    txt("K PAGE 1", 1, 14, color`H`);
   }
 }
 function drawLoanShark() {
@@ -4221,7 +4233,7 @@ function newGame() {
   UIState.pendingBig = false;
   UIState.justRisked = false;
   UIState.sawCasinoNotif = false;
-  UIState.moreMenu = false;
+  UIState.menuPage = 0;
   resetBlackjack();
   rouTypeIndex = 0;
   rouPick = 7;
@@ -4250,7 +4262,7 @@ function goLobby() {
 }
 function enterLobbyFromTitle() {
   stopTitleFx();
-  UIState.moreMenu = false;
+  UIState.menuPage = 0;
   UIState.state = "lobby";
   playSound(betSfx);
   render();
@@ -4286,10 +4298,10 @@ const InputStateHandlers = {
   lobby: {
     a: () => prevStake(),
     d: () => nextStake(),
-    j: () => UIState.moreMenu ? openBlackjack() : openSlot(),
-    i: () => UIState.moreMenu ? openRoulette() : startCard(),
-    k: () => { UIState.moreMenu = !UIState.moreMenu; playSound(tickSfx); render(); },
-    l: () => UIState.moreMenu ? openBingo() : startWheel(),
+    j: () => UIState.menuPage === 1 ? openBlackjack() : (UIState.menuPage === 0 ? openSlot() : null),
+    i: () => UIState.menuPage === 1 ? openRoulette() : (UIState.menuPage === 0 ? startCard() : null),
+    k: () => { UIState.menuPage = (UIState.menuPage + 1) % 3; playSound(tickSfx); render(); },
+    l: () => UIState.menuPage === 1 ? openBingo() : (UIState.menuPage === 0 ? startWheel() : null),
     h: () => { if (PlayerState.vipTier > 0) { PlayerState.vipMode = !PlayerState.vipMode; clampHeat(); updateStakes(); playTune(tickSfx); render(); } },
     w: () => { if (ShopState.upgrades.hyperDrive) { hyperMode = !hyperMode; playSound(tickSfx); render(); } },
     s: () => { UIState.state = "shop"; ShopState.msg = ""; ShopState.cursor = 0; playSound(tickSfx); render(); }
