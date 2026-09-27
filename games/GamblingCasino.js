@@ -1988,6 +1988,10 @@ function feedJackpotByBet(gameState, amount, isNewHand = true) {
   else if (gameState === "roulette") PlayerState.jackpot += Math.max(1, Math.floor(amount * 0.06));
   else if (gameState === "bingo") PlayerState.jackpot += Math.max(1, Math.floor(amount * 0.03));
 }
+function recordCompletedHand(gameState) {
+  SessionStats.handsPlayed++;
+  if (SessionStats.gameCounts[gameState] !== undefined) SessionStats.gameCounts[gameState]++;
+}
 function feedJackpotByWin(returnedAmount, big) {
   const profit = returnedAmount - PlayerState.lastStake;
   if (profit <= 0) return;
@@ -2036,6 +2040,7 @@ function goBust(forced = false) {
     UIState.state = "insurance_notif";
     playSound(winSfx);
   } else if (forced || PlayerState.bank <= -5000 || PlayerState.debt > 0) {
+    CareerStats.busts++;
     UIState.state = "bust"; playTune(bustSfx);
   } else {
     UIState.state = "loan_shark"; playTune(loseSfx);
@@ -2647,7 +2652,7 @@ function drawRoulette() {
   
   txt("L ADD", 0, 14, color`6`);
   txt("I SEL", 6, 14, color`H`);
-  if (ShopState.upgrades?.autoRoul) {
+  if (ShopState.upgrades?.autoRoul && rouTypeIndex !== 9) {
     txtR(ShopState.upgrades.autoRoulOn ? "W AUTO:ON" : "W AUTO:OFF", 14, ShopState.upgrades.autoRoulOn ? color`F` : color`9`);
   }
   txt("J SPIN", 0, 15, color`7`);
@@ -3206,6 +3211,7 @@ function riskSlotWin() {
   }, 900);
 }
 function scoreSlot() { // NOSONAR
+  recordCompletedHand("slot");
   UIState.justRisked = false;
   const syms = SlotState.reels.filter(s => s !== wild);
   let isTrip = false;
@@ -3242,11 +3248,11 @@ function scoreSlot() { // NOSONAR
     if (prSym === cherry || prSym === lemon) {
       const rate = prSym === cherry ? 0.5 : 0.85;
       const refund = Math.floor(PlayerState.lastStake * rate) * sharkMult();
-      payWin(refund, moneyText("PAIR", refund), false);
+      payWin(refund, moneyText("PAIR", refund), false, true, refund > PlayerState.lastStake ? "win" : refund < PlayerState.lastStake ? "loss" : "push");
       return;
     } else {
       const refund = Math.floor(PlayerState.lastStake * 0.5) * sharkMult();
-      payWin(refund, moneyText("CLOSE!", refund), false);
+      payWin(refund, moneyText("CLOSE!", refund), false, true, refund > PlayerState.lastStake ? "win" : refund < PlayerState.lastStake ? "loss" : "push");
       return;
     }
   }
@@ -3330,6 +3336,7 @@ function guessCard(choice) {
   }, 70);
 }
 function resolveCardGame(choice, stake) { // NOSONAR
+  recordCompletedHand("card");
   let won = false;
   if (choice === "tie") {
     won = CardState.next === CardState.current;
@@ -3492,6 +3499,7 @@ function finishWheel() { // NOSONAR
     showWheelBoostText();
     return;
   }
+  recordCompletedHand("wheel");
   if (landed.kind === "spark" && wheelBoosting) {
     const returned = Math.floor(PlayerState.lastStake * wheelBoost);
     PlayerState.heat += returned > PlayerState.lastStake ? 1 : 0;
@@ -3559,11 +3567,6 @@ function finishWheel() { // NOSONAR
     big
   );
 }
-/**
- * Update the largest session payout and career wins or losses; equal returns are pushes.
- * @param {number} amount - Total chips returned, including any returned stake.
- * @param {number} stake - Original chips wagered on the outcome.
- */
 function recordPayout(amount, stake) {
   if (amount > SessionStats.biggestPayout) SessionStats.biggestPayout = amount;
   if (amount > stake) CareerStats.handsWon++;
@@ -3579,6 +3582,13 @@ function recordPayout(amount, stake) {
 function payWin(amount, text, big, feedJackpot = true) {
   PlayerState.bank += amount;
   recordPayout(amount, PlayerState.lastStake);
+=======
+function payWin(amount, text, big, feedJackpot = true, outcome = "win") {
+  PlayerState.bank += amount;
+  if (amount > SessionStats.biggestPayout) SessionStats.biggestPayout = amount;
+  if (outcome === "win") CareerStats.handsWon++;
+  else if (outcome === "loss") CareerStats.handsLost++;
+>>>>>>> 91099d1b (fix: correct casino hand and bust statistics and hide conflicting roulette auto controls)
   if (feedJackpot) {
     feedJackpotByWin(amount, big);
   }
@@ -3702,6 +3712,9 @@ function bjResolve() { // NOSONAR
   let totalPayout = 0;
   
   const r1 = bjResolveHand(bjPlayer, PlayerState.lastStake);
+  recordCompletedHand("blackjack");
+  if (r1.won > 0) CareerStats.handsWon++;
+  else if (r1.won < 0) CareerStats.handsLost++;
   totalWon += r1.won;
   if (r1.payout) totalPayout += r1.payout;
   
@@ -3709,6 +3722,9 @@ function bjResolve() { // NOSONAR
   
   if (bjActive2) {
     const r2 = bjResolveHand(bjPlayer2, bjSplitStake);
+    recordCompletedHand("blackjack");
+    if (r2.won > 0) CareerStats.handsWon++;
+    else if (r2.won < 0) CareerStats.handsLost++;
     totalWon += r2.won;
     if (r2.payout) totalPayout += r2.payout;
     msg += " H2 " + r2.res;
@@ -3776,6 +3792,7 @@ function bjStartDeal(stake) {
     bjMsg = "";
     bjActive = true;
     if (bjTotal(bjPlayer) === 21) {
+      recordCompletedHand("blackjack");
       bjActive = false; bjDealerHidden = false;
       if (bjTotal(bjDealer) === 21) {
         const payout = stake * sharkMult();
@@ -3980,6 +3997,7 @@ function startRouletteSpin() {
  * Clear settled bets and check auto-spin unless a total loss sends the player to bust.
  */
 function finishRoulette() { // NOSONAR
+  recordCompletedHand("roulette");
   clearTransition();
   if (TimerState.roulette !== null) {
     clearInterval(TimerState.roulette);
@@ -4158,7 +4176,7 @@ function bingoDrawBall(isExtra = false) { // NOSONAR
   if (UIState.state !== "bingo" || BingoState.done || BingoState.drawing) return;
   if (!BingoState.started) { BingoState.msg = "J PLAY"; render(); return; }
   if (BingoState.last === -99) { BingoState.msg = "USE WILD FIRST!"; playTune(loseSfx); render(); return; }
-  if (BingoState.balls.length >= 40 && !isExtra) { CareerStats.handsLost++; BingoState.done = true; BingoState.msg = "GAME OVER"; playTune(loseSfx); render(); return; }
+  if (BingoState.balls.length >= 40 && !isExtra) { recordCompletedHand("bingo"); CareerStats.handsLost++; BingoState.done = true; BingoState.msg = "GAME OVER"; playTune(loseSfx); render(); return; }
   let n, cardNums = [];
   const ballSet = new Set(BingoState.balls);
   for (let r = 0; r < 5; r++) {
@@ -4227,6 +4245,7 @@ function bingoAction() { // NOSONAR
       }
       const totalPayout = payout + bonus;
       if (totalPayout > SessionStats.biggestPayout) SessionStats.biggestPayout = totalPayout;
+      recordCompletedHand("bingo");
       CareerStats.handsWon++;
       PlayerState.bank += payout;
       feedJackpotByWin(payout, true);
@@ -4353,7 +4372,6 @@ function titleOrBust() {
     return true;
   }
   if (UIState.state === "bust") {
-    CareerStats.busts++;
     newGame();
     return true;
   }
@@ -4446,7 +4464,7 @@ const InputStateHandlers = {
         RRState.bullet = randInt(1, 6); RRState.pulls = 0; RRState.winnings = 0; UIState.state = "russian_roulette"; playTune(loseSfx); render();
       }
     },
-    k: () => { UIState.state = "bust"; playTune(bustSfx); render(); }
+    k: () => { CareerStats.busts++; UIState.state = "bust"; playTune(bustSfx); render(); }
   },
   russian_roulette: {
     j: () => {
@@ -4637,6 +4655,7 @@ const InputStateHandlers = {
         if (bingoNearMiss() && BingoState.balls.length < 45 && PlayerState.bank >= cost) {
           PlayerState.bank -= cost; SessionStats.totalWagered += cost; PlayerState.jackpot += Math.floor(cost * 0.5); updateStakes(); bingoDrawBall(true);
         } else {
+          recordCompletedHand("bingo");
           CareerStats.handsLost++;
           BingoState.done = true;
           BingoState.msg = "GAME OVER";
@@ -4650,7 +4669,7 @@ const InputStateHandlers = {
     },
   },
   bingoConfirm: {
-    j: () => { CareerStats.handsLost++; resetBingo(); goLobby(); },
+    j: () => { recordCompletedHand("bingo"); CareerStats.handsLost++; resetBingo(); goLobby(); },
     k: () => { UIState.state = "bingo"; render(); },
   }
 };
