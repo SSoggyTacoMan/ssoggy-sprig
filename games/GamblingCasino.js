@@ -12,11 +12,12 @@ const PlayerState = {
 };
 
 const SessionStats = {
-  peakBalance: 150, totalWagered: 0, handsPlayed: 0, biggestPayout: 0
+  peakBalance: 150, totalWagered: 0, handsPlayed: 0, biggestPayout: 0,
+  gameCounts: { slot: 0, wheel: 0, card: 0, roulette: 0, blackjack: 0, bingo: 0 }
 };
 
 const CareerStats = {
-  busts: 0, peakCash: 150, handsWon: 0, handsLost: 0
+  busts: 0, peakCash: 150, handsWon: 0, handsLost: 0, playTimeSec: 0
 };
 
 const UIState = {
@@ -1871,7 +1872,7 @@ const blankMap = map`
 ..........
 ..........`;
 setMap(blankMap);
-let bgmPlayback = null, bgmTimer = null;
+let bgmPlayback = null, bgmTimer = null, globalTimeTimer = setInterval(() => { CareerStats.playTimeSec++; }, 1000);
 let lastRouBets = [];
 let hyperMode = false;
 function getShopItems() {
@@ -1978,6 +1979,7 @@ function resetJackpot() { PlayerState.jackpot = randJackpot(); }
 function feedJackpotByBet(gameState, amount) {
   SessionStats.totalWagered += amount;
   SessionStats.handsPlayed++;
+  if (SessionStats.gameCounts[gameState] !== undefined) SessionStats.gameCounts[gameState]++;
   if (gameState === "slot") PlayerState.jackpot += Math.max(3, Math.floor(amount * 0.12));
   else if (gameState === "wheel") PlayerState.jackpot += Math.max(2, Math.floor(amount * 0.08));
   else if (gameState === "card" || gameState === "blackjack") PlayerState.jackpot += Math.max(1, Math.floor(amount * 0.05));
@@ -2284,8 +2286,9 @@ function drawLobby() {
     txtC("MAX PAY: " + fmt(SessionStats.biggestPayout), 9, color`7`);
     const totalHands = CareerStats.handsWon + CareerStats.handsLost;
     const wlRatio = totalHands > 0 ? Math.floor((CareerStats.handsWon / totalHands) * 100) : 0;
-    txtC("W/L RATIO: " + wlRatio + "%", 10, color`7`);
-    txtC("CAREER BUSTS: " + CareerStats.busts, 11, color`7`);
+    txtC("W/L: " + wlRatio + "% BUSTS: " + CareerStats.busts, 10, color`7`);
+    txtC("FAV: " + getFavGame(), 11, color`7`);
+    txtC("TIME: " + formatTime(CareerStats.playTimeSec), 12, color`7`);
     txt("K PAGE 1", 1, 14, color`H`);
   }
 }
@@ -2749,6 +2752,19 @@ function getRank(cash) {
   if (cash >= 500) return "REGULAR";
   return "ROOKIE";
 }
+function formatTime(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (h > 0) return h + "H " + m + "M";
+  return m + "M " + (sec % 60) + "S";
+}
+function getFavGame() {
+  let fav = "NONE", max = 0;
+  for (const [g, c] of Object.entries(SessionStats.gameCounts)) {
+    if (c > max) { max = c; fav = g === "blackjack" ? "BJ" : g.toUpperCase(); }
+  }
+  return fav;
+}
 function drawBust() {
   prepScreen(false);
   txtC("-- BUST RECAP --", 1, color`3`);
@@ -2761,7 +2777,9 @@ function drawBust() {
   const wlRatio = totalHands > 0 ? Math.floor((CareerStats.handsWon / totalHands) * 100) : 0;
   txtC("W/L RATIO: " + wlRatio + "%", 8, color`7`);
   txtC("CAREER BUSTS: " + CareerStats.busts, 9, color`7`);
-  txtC("PRESS ANY KEY", 12, color`7`);
+  txtC("FAV: " + getFavGame(), 10, color`7`);
+  txtC("TIME: " + formatTime(CareerStats.playTimeSec), 11, color`7`);
+  txtC("PRESS ANY KEY", 13, color`7`);
 }
 const screens = {
   title: drawTitle,
@@ -4171,6 +4189,7 @@ function bingoAction() { // NOSONAR
 function newGame() {
   SessionStats.peakBalance = 150; SessionStats.totalWagered = 0;
   SessionStats.handsPlayed = 0; SessionStats.biggestPayout = 0;
+  SessionStats.gameCounts = { slot: 0, wheel: 0, card: 0, roulette: 0, blackjack: 0, bingo: 0 };
   clearGameTimers();
   clearTransition();
   stopFx();
