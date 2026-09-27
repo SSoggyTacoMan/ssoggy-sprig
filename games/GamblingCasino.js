@@ -2286,10 +2286,10 @@ function drawLobby() {
     txtC("WAGERED: " + fmt(SessionStats.totalWagered), 7, color`7`);
     txtC("HANDS: " + SessionStats.handsPlayed, 8, color`7`);
     txtC("MAX PAY: " + fmt(SessionStats.biggestPayout), 9, color`7`);
+    txtC("FAV: " + getFavGame(), 10, color`7`);
     const totalHands = CareerStats.handsWon + CareerStats.handsLost;
     const wlRatio = totalHands > 0 ? Math.floor((CareerStats.handsWon / totalHands) * 100) : 0;
-    txtC("W/L: " + wlRatio + "% BUSTS: " + CareerStats.busts, 10, color`7`);
-    txtC("FAV: " + getFavGame(), 11, color`7`);
+    txtC("W/L: " + wlRatio + "% BUSTS: " + CareerStats.busts, 11, color`7`);
     txtC("TIME: " + formatTime(CareerStats.playTimeSec), 12, color`7`);
     txt("K PAGE 1", 1, 14, color`H`);
   }
@@ -2775,11 +2775,11 @@ function drawBust() {
   txtC("WAGERED: " + fmt(SessionStats.totalWagered), 5, color`7`);
   txtC("HANDS: " + SessionStats.handsPlayed, 6, color`7`);
   txtC("MAX PAY: " + fmt(SessionStats.biggestPayout), 7, color`7`);
+  txtC("FAV: " + getFavGame(), 8, color`7`);
   const totalHands = CareerStats.handsWon + CareerStats.handsLost;
   const wlRatio = totalHands > 0 ? Math.floor((CareerStats.handsWon / totalHands) * 100) : 0;
-  txtC("W/L RATIO: " + wlRatio + "%", 8, color`7`);
-  txtC("CAREER BUSTS: " + CareerStats.busts, 9, color`7`);
-  txtC("FAV: " + getFavGame(), 10, color`7`);
+  txtC("W/L RATIO: " + wlRatio + "%", 9, color`7`);
+  txtC("CAREER BUSTS: " + CareerStats.busts, 10, color`7`);
   txtC("TIME: " + formatTime(CareerStats.playTimeSec), 11, color`7`);
   txtC("PRESS ANY KEY", 13, color`7`);
 }
@@ -2997,7 +2997,7 @@ function pressure() {
   return PlayerState.lastStake / before;
 }
 // eslint-disable-next-line sonarjs/cognitive-complexity
-function spendStake(decreaseDeadline = true) { // NOSONAR
+function spendStake(decreaseDeadline = true, isNewHand = true) { // NOSONAR
   const selectedStake = stakes[stakeIndex];
   let s = selectedStakeCost();
   if (s === undefined || s <= 0) return 0;
@@ -3023,7 +3023,7 @@ function spendStake(decreaseDeadline = true) { // NOSONAR
   }
   
   PlayerState.bank -= s;
-  feedJackpotByBet(UIState.state, s);
+  feedJackpotByBet(UIState.state, s, isNewHand);
   
   PlayerState.lastStake = s;
   PlayerState.lastStakeAllIn = selectedStake === "ALL";
@@ -3895,7 +3895,7 @@ function rouWins(n, t, pick) {
 function spinRoulette() {
   if (UIState.state !== "roulette") return;
   if (rouBets.length === 0) {
-    const stake = spendStake(true);
+    const stake = spendStake(true, false);
     if (stake === 0) return;
     rouBets.push({ type: rouTypes[rouTypeIndex], pick: rouPick, stake: stake });
   } else {
@@ -3913,6 +3913,8 @@ function spinRoulette() {
     }
   }
   if (rouBets.length > 0) {
+    SessionStats.handsPlayed++;
+    SessionStats.gameCounts["roulette"]++;
     lastRouBets = [...rouBets];
   }
   startRouletteSpin();
@@ -4535,7 +4537,7 @@ const InputStateHandlers = {
       }
     },
     l: () => {
-      const stake = spendStake(false);
+      const stake = spendStake(false, false);
       if (stake > 0) {
         rouBets.push({ type: rouTypes[rouTypeIndex], pick: rouPick, stake: stake });
         playSound(tickSfx);
@@ -4573,7 +4575,7 @@ const InputStateHandlers = {
       if (BingoState.balls.length >= 40 && !BingoState.done) {
         const cost = Math.max(3, Math.floor(PlayerState.lastStake * 0.2));
         if (bingoNearMiss() && BingoState.balls.length < 45 && PlayerState.bank >= cost) {
-          PlayerState.bank -= cost; PlayerState.jackpot += Math.floor(cost * 0.5); updateStakes(); bingoDrawBall(true);
+          PlayerState.bank -= cost; SessionStats.totalWagered += cost; PlayerState.jackpot += Math.floor(cost * 0.5); updateStakes(); bingoDrawBall(true);
         }
       } else {
         bingoDrawBall();
