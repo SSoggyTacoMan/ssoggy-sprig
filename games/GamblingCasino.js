@@ -3710,8 +3710,8 @@ function bjResolve() { // NOSONAR
           r1.res === "PUSH" ? "PUSH 0" : "LOST " + fmt(PlayerState.lastStake); // NOSONAR
   }
   
+  recordPayout(totalPayout, PlayerState.lastStake + (bjActive2 ? bjSplitStake : 0));
   if (totalPayout > 0) {
-    if (totalPayout > SessionStats.biggestPayout) SessionStats.biggestPayout = totalPayout;
     PlayerState.bank += totalPayout;
   }
   
