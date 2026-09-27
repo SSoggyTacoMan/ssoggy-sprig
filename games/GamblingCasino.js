@@ -3188,6 +3188,7 @@ function riskSlotWin() {
       UIState.pendingText = "";
       UIState.pendingBig = false;
       if (PlayerState.bank <= 0) {
+        CareerStats.handsLost++;
         goBust();
       } else {
         showLoss(lossText("RISK"), 1800);
@@ -3244,6 +3245,7 @@ function scoreSlot() { // NOSONAR
   PlayerState.heat -= 1;
   clampHeat();
   if (PlayerState.bank <= 0) {
+    CareerStats.handsLost++;
     goBust();
     return;
   }
@@ -3342,6 +3344,7 @@ function resolveCardGame(choice, stake) { // NOSONAR
     PlayerState.heat -= 1;
     clampHeat();
     if (PlayerState.bank <= 0) {
+      CareerStats.handsLost++;
       goBust();
     } else if (choice === "tie") {
       showLoss(lossText("NO TIE"), 1900);
@@ -3513,6 +3516,7 @@ function finishWheel() { // NOSONAR
     clampHeat();
     wheelBoosting = false;
     if (PlayerState.bank <= 0) {
+      CareerStats.handsLost++;
       goBust();
     } else {
       showLoss(lossText("LOSS"), 1900);
@@ -4299,7 +4303,7 @@ function enterLobbyFromTitle() {
 }
 function wakeBgm() { if (UIState.state !== "bust") startBgm();
 }
-function titleOrBust(key) {
+function titleOrBust() {
   if (UIState.state === "title") {
     enterLobbyFromTitle();
     return true;
@@ -4589,7 +4593,7 @@ const InputStateHandlers = {
 };
 
 function handleInput(key) {
-  if (titleOrBust(key)) return;
+  if (titleOrBust()) return;
   if (UIState.state === "bingoConfirm" && (key !== "j" && key !== "k")) return;
   wakeBgm();
 
