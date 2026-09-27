@@ -3551,11 +3551,14 @@ function finishWheel() { // NOSONAR
     big
   );
 }
+function recordPayout(amount, stake) {
+  if (amount > SessionStats.biggestPayout) SessionStats.biggestPayout = amount;
+  if (amount > stake) CareerStats.handsWon++;
+  else if (amount < stake) CareerStats.handsLost++;
+}
 function payWin(amount, text, big, feedJackpot = true) {
   PlayerState.bank += amount;
-  if (amount > SessionStats.biggestPayout) SessionStats.biggestPayout = amount;
-  if (amount > PlayerState.lastStake) CareerStats.handsWon++;
-  else CareerStats.handsLost++;
+  recordPayout(amount, PlayerState.lastStake);
   if (feedJackpot) {
     feedJackpotByWin(amount, big);
   }
@@ -3751,11 +3754,13 @@ function bjStartDeal(stake) {
       bjActive = false; bjDealerHidden = false;
       if (bjTotal(bjDealer) === 21) {
         const payout = stake * sharkMult();
+        recordPayout(payout, stake);
         PlayerState.bank += payout;
         bjDone = true; bjMsg = "PUSH 0";
         playTune(tickSfx);
       } else {
         const payout = Math.floor(stake * 2.5) * sharkMult();
+        recordPayout(payout, stake);
         PlayerState.bank += payout;
         CareerStats.handsWon++;
         if (payout > SessionStats.biggestPayout) SessionStats.biggestPayout = payout;
@@ -3970,7 +3975,7 @@ function finishRoulette() { // NOSONAR
   if (totalWin > totalBet) CareerStats.handsWon++;
   else CareerStats.handsLost++;
   if (totalWin > 0) {
-    if (totalWin > SessionStats.biggestPayout) SessionStats.biggestPayout = totalWin;
+    recordPayout(totalWin, totalBet);
     PlayerState.bank += totalWin;
     feedJackpotByWin(totalWin, maxMult >= 36);
     PlayerState.heat += maxMult >= 36 ? 2 : 1; clampHeat();
