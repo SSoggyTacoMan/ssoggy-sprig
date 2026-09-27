@@ -1976,10 +1976,12 @@ function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) 
 function randJackpot() { return randInt(450, 850);
 }
 function resetJackpot() { PlayerState.jackpot = randJackpot(); }
-function feedJackpotByBet(gameState, amount) {
+function feedJackpotByBet(gameState, amount, isNewHand = true) {
   SessionStats.totalWagered += amount;
-  SessionStats.handsPlayed++;
-  if (SessionStats.gameCounts[gameState] !== undefined) SessionStats.gameCounts[gameState]++;
+  if (isNewHand) {
+    SessionStats.handsPlayed++;
+    if (SessionStats.gameCounts[gameState] !== undefined) SessionStats.gameCounts[gameState]++;
+  }
   if (gameState === "slot") PlayerState.jackpot += Math.max(3, Math.floor(amount * 0.12));
   else if (gameState === "wheel") PlayerState.jackpot += Math.max(2, Math.floor(amount * 0.08));
   else if (gameState === "card" || gameState === "blackjack") PlayerState.jackpot += Math.max(1, Math.floor(amount * 0.05));
@@ -3689,14 +3691,17 @@ function bjResolve() { // NOSONAR
   }
   
   if (totalPayout > 0) {
+    if (totalPayout > SessionStats.biggestPayout) SessionStats.biggestPayout = totalPayout;
     PlayerState.bank += totalPayout;
   }
   
   if (totalWon > 0) {
+    CareerStats.handsWon++;
     PlayerState.jackpot += Math.max(1, Math.floor(totalWon * 0.03));
     PlayerState.heat += 1; clampHeat();
     playSound(winSfx, 900);
   } else if (totalWon < 0) {
+    CareerStats.handsLost++;
     PlayerState.heat -= 1; clampHeat();
     if (PlayerState.bank <= 0) { goBust(); return; }
     playSound(loseSfx, 1200);
@@ -3763,7 +3768,7 @@ function bjSplit() {
   if (!canCover(PlayerState.lastStake)) return;
   PlayerState.bank -= PlayerState.lastStake;
   bjSplitStake = PlayerState.lastStake;
-  feedJackpotByBet(UIState.state, PlayerState.lastStake);
+  feedJackpotByBet(UIState.state, PlayerState.lastStake, false);
   
   bjPlayer2 = [bjPlayer.pop()];
   bjActive2 = true;
@@ -3800,7 +3805,7 @@ function bjDoubleDown() {
   if (currentHand.length !== 2) return;
   if (!canCover(stakeAmount)) return;
   PlayerState.bank -= stakeAmount;
-  feedJackpotByBet(UIState.state, stakeAmount);
+  feedJackpotByBet(UIState.state, stakeAmount, false);
   if (bjCurrentHand === 1) {
     PlayerState.lastStake *= 2;
   } else {
@@ -4103,7 +4108,7 @@ function bingoDrawBall(isExtra = false) { // NOSONAR
   if (UIState.state !== "bingo" || BingoState.done || BingoState.drawing) return;
   if (!BingoState.started) { BingoState.msg = "J PLAY"; render(); return; }
   if (BingoState.last === -99) { BingoState.msg = "USE WILD FIRST!"; playTune(loseSfx); render(); return; }
-  if (BingoState.balls.length >= 40 && !isExtra) { BingoState.done = true; BingoState.msg = "GAME OVER"; playTune(loseSfx); render(); return; }
+  if (BingoState.balls.length >= 40 && !isExtra) { CareerStats.handsLost++; BingoState.done = true; BingoState.msg = "GAME OVER"; playTune(loseSfx); render(); return; }
   let n, cardNums = [];
   const ballSet = new Set(BingoState.balls);
   for (let r = 0; r < 5; r++) {
@@ -4170,6 +4175,9 @@ function bingoAction() { // NOSONAR
         if (jackPrize === PlayerState.jackpot) resetJackpot(); else reduceJackpot(jackPrize);
         jackWon = true;
       }
+      const totalPayout = payout + bonus;
+      if (totalPayout > SessionStats.biggestPayout) SessionStats.biggestPayout = totalPayout;
+      CareerStats.handsWon++;
       PlayerState.bank += payout;
       feedJackpotByWin(payout, true);
       updateStakes();
@@ -4551,7 +4559,7 @@ const InputStateHandlers = {
     s: () => bingoMove(0, 1),
     j: () => {
       if (BingoState.balls.length >= 40 && !BingoState.done) {
-        BingoState.done = true; BingoState.msg = "GAME OVER"; playTune(loseSfx); render();
+        CareerStats.handsLost++; BingoState.done = true; BingoState.msg = "GAME OVER"; playTune(loseSfx); render();
       } else {
         bingoAction();
       }
@@ -4573,7 +4581,7 @@ const InputStateHandlers = {
     },
   },
   bingoConfirm: {
-    j: () => { resetBingo(); goLobby(); },
+    j: () => { CareerStats.handsLost++; resetBingo(); goLobby(); },
     k: () => { UIState.state = "bingo"; render(); },
   }
 };
