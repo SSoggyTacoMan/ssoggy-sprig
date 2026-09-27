@@ -2779,7 +2779,7 @@ function drawBust() {
   const totalHands = CareerStats.handsWon + CareerStats.handsLost;
   const wlRatio = totalHands > 0 ? Math.floor((CareerStats.handsWon / totalHands) * 100) : 0;
   txtC("W/L RATIO: " + wlRatio + "%", 9, color`7`);
-  txtC("CAREER BUSTS: " + CareerStats.busts, 10, color`7`);
+  txtC("CAREER BUSTS: " + (CareerStats.busts + 1), 10, color`7`);
   txtC("TIME: " + formatTime(CareerStats.playTimeSec), 11, color`7`);
   txtC("PRESS ANY KEY", 13, color`7`);
 }
