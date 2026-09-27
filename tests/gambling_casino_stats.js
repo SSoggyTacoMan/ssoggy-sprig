@@ -153,7 +153,7 @@ for (const [symbol, multiplier, refund] of [
   });
 }
 
-test('equal slot refunds are pushes; payWin defaults to a win and preserves jackpot opt-out', () => {
+test('equal refunds and default stake returns are pushes; larger payouts win', () => {
   const g = game();
   // No current upgrade produces an equal pair refund, so supply that boundary multiplier.
   g.run(`PlayerState.lastStake = 10; sharkMult = () => 2;
@@ -162,11 +162,28 @@ test('equal slot refunds are pushes; payWin defaults to a win and preserves jack
   assert.equal(g.stats().career.handsWon, 0);
   assert.equal(g.stats().career.handsLost, 0);
   const jackpot = g.run('PlayerState.jackpot');
+  g.run(`payWin(10, 'PUSH', false, false);`);
+  assert.equal(g.stats().bank, 170);
+  assert.equal(g.stats().career.handsWon, 0);
+  assert.equal(g.stats().career.handsLost, 0);
   g.run(`payWin(100, 'WIN', true, false);`);
-  assert.equal(g.stats().bank, 260);
+  assert.equal(g.stats().bank, 270);
   assert.equal(g.stats().career.handsWon, 1);
   assert.equal(g.run('PlayerState.jackpot'), jackpot);
 });
+
+for (const [name, resolve, bank] of [
+  ['card', "CardState.current = 5; CardState.next = 8; resolveCardGame('high', 10);", 171],
+  ['wheel', "wheel = [{kind: 'mult', mult: 1}]; WheelState.index = 0; wheelBoost = 2; finishWheel();", 170],
+]) {
+  test(`${name} payout above stake counts a default-outcome win`, () => {
+    const g = game();
+    g.run(`PlayerState.lastStake = 10; ${resolve}`);
+    assertHands(g, name, 1);
+    assert.equal(g.stats().bank, bank);
+    assert.equal(g.stats().career.handsWon, 1);
+  });
+}
 
 for (const [name, resolve] of [
   ['slot', 'SlotState.reels = [cherry, lemon, bell]; scoreSlot();'],

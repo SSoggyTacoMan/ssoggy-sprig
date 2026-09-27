@@ -3586,7 +3586,7 @@ function payWin(amount, text, big, feedJackpot = true) {
 function payWin(amount, text, big, feedJackpot = true, outcome = "win") {
   PlayerState.bank += amount;
   if (amount > SessionStats.biggestPayout) SessionStats.biggestPayout = amount;
-  if (outcome === "win") CareerStats.handsWon++;
+  if (outcome === "win" && amount > PlayerState.lastStake) CareerStats.handsWon++;
   else if (outcome === "loss") CareerStats.handsLost++;
 >>>>>>> 91099d1b (fix: correct casino hand and bust statistics and hide conflicting roulette auto controls)
   if (feedJackpot) {
