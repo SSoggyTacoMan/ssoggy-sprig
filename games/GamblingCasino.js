@@ -2761,7 +2761,7 @@ function drawBust() {
   const wlRatio = totalHands > 0 ? Math.floor((CareerStats.handsWon / totalHands) * 100) : 0;
   txtC("W/L RATIO: " + wlRatio + "%", 8, color`7`);
   txtC("CAREER BUSTS: " + CareerStats.busts, 9, color`7`);
-  txtC("J REBUY | K QUIT", 12, color`4`);
+  txtC("PRESS ANY KEY", 12, color`7`);
 }
 const screens = {
   title: drawTitle,
@@ -4276,20 +4276,8 @@ function titleOrBust(key) {
     return true;
   }
   if (UIState.state === "bust") {
-    if (key === "j") {
-      CareerStats.busts++;
-      PlayerState.bank = 100;
-      PlayerState.debt = 0;
-      PlayerState.sharkDeadline = 0;
-      PlayerState.sharkDealType = 0;
-      PlayerState.offeredDeal = 0;
-      UIState.state = "lobby";
-      updateStakes();
-      render();
-    } else if (key === "k") {
-      CareerStats.busts++;
-      newGame();
-    }
+    CareerStats.busts++;
+    newGame();
     return true;
   }
   return false;
