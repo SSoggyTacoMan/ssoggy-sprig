@@ -3554,7 +3554,8 @@ function finishWheel() { // NOSONAR
 function payWin(amount, text, big, feedJackpot = true) {
   PlayerState.bank += amount;
   if (amount > SessionStats.biggestPayout) SessionStats.biggestPayout = amount;
-  CareerStats.handsWon++;
+  if (amount > PlayerState.lastStake) CareerStats.handsWon++;
+  else CareerStats.handsLost++;
   if (feedJackpot) {
     feedJackpotByWin(amount, big);
   }
@@ -3699,13 +3700,15 @@ function bjResolve() { // NOSONAR
     PlayerState.bank += totalPayout;
   }
   
+  const totalStake = PlayerState.lastStake + (bjActive2 ? bjSplitStake : 0);
+  if (totalPayout > totalStake) CareerStats.handsWon++;
+  else CareerStats.handsLost++;
+
   if (totalWon > 0) {
-    CareerStats.handsWon++;
     PlayerState.jackpot += Math.max(1, Math.floor(totalWon * 0.03));
     PlayerState.heat += 1; clampHeat();
     playSound(winSfx, 900);
   } else if (totalWon < 0) {
-    CareerStats.handsLost++;
     PlayerState.heat -= 1; clampHeat();
     if (PlayerState.bank <= 0) { goBust(); return; }
     playSound(loseSfx, 1200);
@@ -3754,6 +3757,8 @@ function bjStartDeal(stake) {
       } else {
         const payout = Math.floor(stake * 2.5) * sharkMult();
         PlayerState.bank += payout;
+        CareerStats.handsWon++;
+        if (payout > SessionStats.biggestPayout) SessionStats.biggestPayout = payout;
         PlayerState.jackpot += Math.max(1, Math.floor((payout - stake) * 0.05));
         PlayerState.heat += 2; clampHeat();
         bjDone = true; bjMsg = moneyText("BLACKJACK", payout);
@@ -3962,9 +3967,10 @@ function finishRoulette() { // NOSONAR
     }
   }
   PlayerState.lastStake = totalBet;
+  if (totalWin > totalBet) CareerStats.handsWon++;
+  else CareerStats.handsLost++;
   if (totalWin > 0) {
     if (totalWin > SessionStats.biggestPayout) SessionStats.biggestPayout = totalWin;
-    CareerStats.handsWon++;
     PlayerState.bank += totalWin;
     feedJackpotByWin(totalWin, maxMult >= 36);
     PlayerState.heat += maxMult >= 36 ? 2 : 1; clampHeat();
@@ -3974,7 +3980,6 @@ function finishRoulette() { // NOSONAR
     updateStakes();
     render();
   } else {
-    CareerStats.handsLost++;
     PlayerState.heat -= 1; clampHeat();
     rouMsg = "LOST " + fmt(totalBet);
     if (PlayerState.bank <= 0) { goBust(); return; }
