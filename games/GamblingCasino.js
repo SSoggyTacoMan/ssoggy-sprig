@@ -3551,11 +3551,23 @@ function finishWheel() { // NOSONAR
     big
   );
 }
+/**
+ * Update the largest session payout and career wins or losses; equal returns are pushes.
+ * @param {number} amount - Total chips returned, including any returned stake.
+ * @param {number} stake - Original chips wagered on the outcome.
+ */
 function recordPayout(amount, stake) {
   if (amount > SessionStats.biggestPayout) SessionStats.biggestPayout = amount;
   if (amount > stake) CareerStats.handsWon++;
   else if (amount < stake) CareerStats.handsLost++;
 }
+/**
+ * Credit a payout, record its outcome against the last stake, and display the result.
+ * @param {number} amount - Total chips returned, including any returned stake.
+ * @param {string} text - Result message to display.
+ * @param {boolean} big - Whether to use the longer result display and big-win jackpot rules.
+ * @param {boolean} [feedJackpot=true] - Whether the payout contributes to the jackpot.
+ */
 function payWin(amount, text, big, feedJackpot = true) {
   PlayerState.bank += amount;
   recordPayout(amount, PlayerState.lastStake);
@@ -3723,6 +3735,10 @@ function bjResolve() { // NOSONAR
   updateStakes();
   render();
 }
+/**
+ * Reset and animate the opening blackjack deal, settling a player natural immediately.
+ * @param {number} stake - Chips already wagered on this hand, used to calculate payouts.
+ */
 function bjStartDeal(stake) {
   bjPlayer = [];
   bjDealer = [];
@@ -3738,6 +3754,7 @@ function bjStartDeal(stake) {
     () => bjPlayer.push(bjDraw())
   ];
   let i = 0;
+  /** Deal the next opening card, scheduling another step or settling a natural. */
   const step = () => {
     if (UIState.state !== "blackjack") return;
     deal[i++]();
@@ -3950,6 +3967,10 @@ function startRouletteSpin() {
     }
   }, 100);
 }
+/**
+ * Stop the spin, settle all roulette bets, record the net outcome, and show the result.
+ * Clear settled bets and check auto-spin unless a total loss sends the player to bust.
+ */
 function finishRoulette() { // NOSONAR
   clearTransition();
   if (TimerState.roulette !== null) {

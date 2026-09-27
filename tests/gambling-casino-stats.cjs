@@ -2,6 +2,10 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../games/GamblingCasino.js'), 'utf8');
+/**
+ * Load a fresh casino game with stubbed Sprig APIs and manually advanced timeouts.
+ * @returns {{run: (code: string) => *, step: () => void}} Game evaluator and timeout stepper.
+ */
 function setup() {
   let id = 0;
   const timeouts = new Map();
@@ -18,9 +22,16 @@ function setup() {
   });
   const run = code => vm.runInContext(code, ctx);
   run(source);
-  return {run, step() { const next = timeouts.entries().next().value; assert.ok(next); timeouts.delete(next[0]); next[1](); }};
+  return {run,
+    /** Run the oldest queued timeout, failing if no timeout is pending. */
+    step() { const next = timeouts.entries().next().value; assert.ok(next); timeouts.delete(next[0]); next[1](); }};
 }
 let failures = 0;
+/**
+ * Run a synchronous test, logging its result and counting failures for the exit status.
+ * @param {string} name - Description included in the result log.
+ * @param {() => void} fn - Test body whose thrown errors count as failures.
+ */
 function test(name, fn) {
   try { fn(); console.log('PASS: ' + name); }
   catch(e) { failures++; console.log('FAIL: ' + name + '\n' + e.message); }
