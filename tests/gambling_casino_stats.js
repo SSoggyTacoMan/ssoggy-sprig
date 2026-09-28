@@ -49,6 +49,23 @@ function assertHands(g, name, count) {
 
 const hand = values => values.map(v => ({ v, s: '&' }));
 
+for (const [player, won, lost, payout] of [
+  [[10, 10], 1, 0, 20], [[10, 7], 0, 1, 0],
+  [[10, 8], 0, 0, 10], [[10, 10, 5], 0, 1, 0],
+]) {
+  test(`single blackjack ${player} records one outcome and its payout`, () => {
+    const g = game();
+    g.run(`UIState.state = 'blackjack'; PlayerState.bank = 100; PlayerState.lastStake = 10;
+      bjDealer = ${JSON.stringify(hand([10, 8]))};
+      bjPlayer = ${JSON.stringify(hand(player))}; bjResolve();`);
+    assertHands(g, 'blackjack', 1);
+    assert.equal(g.stats().career.handsWon, won);
+    assert.equal(g.stats().career.handsLost, lost);
+    assert.equal(g.stats().session.biggestPayout, payout);
+    assert.equal(g.stats().bank, 100 + payout);
+  });
+}
+
 test('blackjack double-down counts one resolved hand and preserves both wagers', () => {
   const g = game();
   g.run(`UIState.state = 'blackjack'; stakes = [10]; stakeIndex = 0;
@@ -96,6 +113,39 @@ for (const [first, second, won, lost, payout] of [
     assert.equal(g.stats().career.handsWon, won);
     assert.equal(g.stats().career.handsLost, lost);
     assert.equal(g.stats().bank, 100 + payout);
+    assert.equal(g.stats().session.biggestPayout, payout);
+  });
+}
+
+for (const [name, red, black, result, bank, payout, won, lost, msg, resultColor, decoration] of [
+  ['win', 10, 5, 1, 100, 20, 1, 0, 'WIN 5', '6', 'spark'],
+  ['partial loss', 10, 25, 1, 100, 20, 0, 1, 'LOST 15', '3', 'skull'],
+  ['push', 10, 10, 1, 100, 20, 0, 0, 'PUSH 0', '7', null],
+  ['total loss', 10, 10, 0, 100, 0, 0, 1, 'LOST 20', '3', 'skull'],
+  ['bust', 10, 10, 0, 0, 0, 0, 1, 'LOST 20', '3', null],
+]) {
+  test(`roulette ${name} counts once, tracks payout, and renders the outcome`, () => {
+    const g = game();
+    g.run(`UIState.state = 'roulette'; PlayerState.bank = ${bank}; PlayerState.debt = 1;
+      rouBets = [{type: 'RED', stake: ${red}}, {type: 'BLACK', stake: ${black}}];
+      randInt = () => ${result}; finishRoulette();`);
+    assertHands(g, 'roulette', 1);
+    assert.equal(g.stats().career.handsWon, won);
+    assert.equal(g.stats().career.handsLost, lost);
+    assert.equal(g.stats().session.biggestPayout, payout);
+    assert.equal(g.stats().bank, bank + payout);
+    assert.equal(g.run('rouMsg'), msg);
+    if (bank === 0) {
+      assert.equal(g.run('UIState.state'), 'bust');
+      assert.equal(g.stats().career.busts, 1);
+    } else {
+      assert.deepEqual(g.text.find(t => t.value === msg)?.color, g.run(`color\`${resultColor}\``));
+      assert.equal(g.run('getAll(skull).length'), decoration === 'skull' ? 4 : 0);
+      assert.equal(g.run('getAll(spark).length'), decoration === 'spark' ? 4 : 0);
+      g.run('SessionStats.biggestPayout = 1000;');
+      g.run(`rouBets = [{type: 'RED', stake: 10}]; finishRoulette();`);
+      assert.equal(g.stats().session.biggestPayout, 1000);
+    }
   });
 }
 
@@ -118,6 +168,8 @@ test('manual and automatic roulette count each resolution once for multiple bets
   g.run('finishRoulette();');
   assertHands(g, 'roulette', 2);
   assert.equal(g.stats().bank, 150);
+  assert.equal(g.stats().career.handsWon, 0);
+  assert.equal(g.stats().career.handsLost, 0);
 });
 
 test('roulette number picker hides the auto label and retains W/S controls', () => {
