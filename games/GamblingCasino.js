@@ -2796,7 +2796,7 @@ function drawBust() {
   const totalHands = CareerStats.handsWon + CareerStats.handsLost;
   const wlRatio = totalHands > 0 ? Math.floor((CareerStats.handsWon / totalHands) * 100) : 0;
   txtC("W/L RATIO: " + wlRatio + "%", 9, color`7`);
-  txtC("CAREER BUSTS: " + (CareerStats.busts + 1), 10, color`7`);
+  txtC("CAREER BUSTS: " + CareerStats.busts, 10, color`7`);
   txtC("TIME: " + formatTime(CareerStats.playTimeSec), 11, color`7`);
   txtC("PRESS ANY KEY", 13, color`7`);
 }
@@ -3969,8 +3969,6 @@ function spinRoulette() {
     }
   }
   if (rouBets.length > 0) {
-    SessionStats.handsPlayed++;
-    SessionStats.gameCounts["roulette"]++;
     lastRouBets = [...rouBets];
   }
   startRouletteSpin();
@@ -4074,7 +4072,7 @@ function rouletteAutoSpinCheck() {
            return;
          }
          PlayerState.bank -= totalBet;
-         feedJackpotByBet("roulette", totalBet);
+         feedJackpotByBet("roulette", totalBet, false);
          PlayerState.lastStake = totalBet;
          rouBets = [...lastRouBets];
          startRouletteSpin();
@@ -4636,13 +4634,7 @@ const InputStateHandlers = {
     d: () => { if (BingoState.started && !BingoState.done) bingoMove(1, 0); else nextStake(); },
     w: () => bingoMove(0, -1),
     s: () => bingoMove(0, 1),
-    j: () => {
-      if (BingoState.balls.length >= 40 && !BingoState.done) {
-        CareerStats.handsLost++; BingoState.done = true; BingoState.msg = "GAME OVER"; playTune(loseSfx); render();
-      } else {
-        bingoAction();
-      }
-    },
+    j: () => bingoAction(),
     i: () => { if (BingoState.done) { resetBingo(); render(); } },
     k: () => {
       if (BingoState.started && !BingoState.done) { UIState.state = "bingoConfirm"; render(); }
@@ -4652,7 +4644,6 @@ const InputStateHandlers = {
       if (BingoState.balls.length >= 40 && !BingoState.done) {
         const cost = Math.max(3, Math.floor(PlayerState.lastStake * 0.2));
         if (bingoNearMiss() && BingoState.balls.length < 45 && PlayerState.bank >= cost) {
-        if (bingoNearMiss() && BingoState.balls.length < 45 && PlayerState.bank >= cost) {
           PlayerState.bank -= cost; SessionStats.totalWagered += cost; PlayerState.jackpot += Math.floor(cost * 0.5); updateStakes(); bingoDrawBall(true);
         } else {
           recordCompletedHand("bingo");
@@ -4661,7 +4652,6 @@ const InputStateHandlers = {
           BingoState.msg = "GAME OVER";
           playTune(loseSfx);
           render();
-        }
         }
       } else {
         bingoDrawBall();
