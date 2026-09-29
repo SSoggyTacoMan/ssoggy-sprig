@@ -4,9 +4,10 @@
 
 ### A 6-in-1 casino arcade built for the Hack Club Sprig engine. It features 6 games sharing a balanced good unified economy, global jackpot, a shop, and dynamic betting tiers.
 
-__**Game Location: https://github.com/SSoggyTacoMan/sprig/blob/3338334157c40f9ab74987385ec4740a76aa0e96/games/GamblingCasino.js**__
+__**Game Location: https://github.com/SSoggyTacoMan/ssoggy-sprig/blob/casino-game-submission/games/GamblingCasino.js**__
 
-__**Share Link: https://sprig.hackclub.com/share/WPt8KRndAAOVMnoASb4a**__
+__**Share Link: https://sprig.hackclub.com/share/RPlFAVufcSO4InpyXmkB 
+(might be outdated if I didn't update it, last update: 29 sept 2026)**__
 
 #### The Games
 
