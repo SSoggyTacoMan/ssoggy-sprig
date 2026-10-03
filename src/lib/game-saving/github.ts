@@ -4,8 +4,9 @@ export class GitHubApiError extends Error {
 	status: number;
 	data: any;
 	constructor(status: number, statusText: string, data: any) {
-		const detail = data?.message || (typeof data === "string" ? data : JSON.stringify(data));
-		super(`GitHub API Error (${status}): ${statusText}${detail ? ` - ${detail}` : ""}`);
+		const rawDetail = data?.message || (typeof data === "string" ? data : (data && Object.keys(data).length > 0 ? JSON.stringify(data) : ""));
+		const detail = rawDetail && rawDetail !== statusText ? ` - ${rawDetail}` : "";
+		super(`GitHub API Error (${status}): ${statusText}${detail}`);
 		this.name = "GitHubApiError";
 		this.status = status;
 		this.data = data;
@@ -56,6 +57,7 @@ async function fetchWithRetry(
 			}
 		} catch (error) {
 			lastError = error;
+			lastResponse = undefined;
 			if (attempt < retries - 1) {
 				console.warn(
 					`Retrying GitHub API request (${attempt + 1}/${retries}) after network error:`,
@@ -317,12 +319,15 @@ export async function recordGamePullRequest(
 	);
 
 	if (!updateGamePRResponse.ok) {
-		const errorData = await updateGamePRResponse
-			.json()
-			.catch(() => ({}));
-		throw new Error(
-			errorData.error || errorData.message || (typeof errorData === "string" ? errorData : "Failed to update GitHub PR URL in game")
-		);
+		const rawText = await updateGamePRResponse.text().catch(() => "");
+		let parsed: any;
+		try {
+			parsed = JSON.parse(rawText);
+		} catch {
+			parsed = null;
+		}
+		const message = parsed?.error || parsed?.message || rawText || "Failed to update GitHub PR URL in game";
+		throw new Error(message);
 	}
 }
 
@@ -409,13 +414,37 @@ export async function findGamePullRequest(
 
 	let skippedCount = 0;
 	for (const item of results.items ?? []) {
+		let pullRequest;
 		try {
-			const found = await fetchPullRequestWithFiles(accessToken, owner, repo, item.number);
-			if (!isEditorPullRequest(found.pullRequest, author)) continue;
-			if (found.files.some((file: any) => file.filename === gamePath && file.status !== "removed")) return found;
+			const pullResponse = await fetchWithRetry(
+				`https://api.github.com/repos/${owner}/${repo}/pulls/${item.number}`,
+				{
+					headers: getAuthHeaders(accessToken),
+				}
+			);
+			pullRequest = await handleResponse(pullResponse);
 		} catch (error) {
 			skippedCount++;
 			console.warn(`Skipping pull request #${item.number} while looking for this game's pull request:`, error);
+			continue;
+		}
+
+		if (!isEditorPullRequest(pullRequest, author)) continue;
+
+		try {
+			const filesResponse = await fetchWithRetry(
+				`https://api.github.com/repos/${owner}/${repo}/pulls/${item.number}/files?per_page=100`,
+				{
+					headers: getAuthHeaders(accessToken),
+				}
+			);
+			const files = await handleResponse(filesResponse);
+			if (files.some((file: any) => file.filename === gamePath && file.status !== "removed")) {
+				return { pullRequest, files };
+			}
+		} catch (error) {
+			skippedCount++;
+			console.warn(`Skipping files for pull request #${item.number}:`, error);
 		}
 	}
 
