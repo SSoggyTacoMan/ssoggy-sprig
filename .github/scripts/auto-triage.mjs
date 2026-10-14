@@ -1,3 +1,5 @@
+// test
+
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
